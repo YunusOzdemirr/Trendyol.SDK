@@ -4,9 +4,15 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish or backfill (for example, v0.1.0-alpha.1)
+        required: true
+        type: string
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -22,21 +28,30 @@ jobs:
     name: Build, test, and pack
     runs-on: ubuntu-latest
     outputs:
+      tag: ${{ steps.version.outputs.tag }}
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
+      commit: ${{ steps.version.outputs.commit }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Validate release tag and commit
         id: version
         shell: bash
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          tag="${GITHUB_REF_NAME}"
+          tag="${RELEASE_TAG}"
+          if [[ "${tag}" != v* ]]; then
+            echo "::error::Release tags must start with v."
+            exit 1
+          fi
+
           version="${tag#v}"
 
           if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
@@ -44,12 +59,21 @@ jobs:
             exit 1
           fi
 
-          if ! git merge-base --is-ancestor "${GITHUB_SHA}" "origin/${DEFAULT_BRANCH}"; then
+          tag_ref="refs/tags/${tag}"
+          if ! git show-ref --verify --quiet "${tag_ref}"; then
+            echo "::error::Release tag ${tag} does not exist in the repository."
+            exit 1
+          fi
+
+          commit="$(git rev-list -n 1 "${tag_ref}")"
+          if ! git merge-base --is-ancestor "${commit}" "origin/${DEFAULT_BRANCH}"; then
             echo "::error::The release tag must point to a commit on ${DEFAULT_BRANCH}."
             exit 1
           fi
 
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "commit=${commit}" >> "${GITHUB_OUTPUT}"
           if [[ "${version}" == *-* ]]; then
             echo "prerelease=true" >> "${GITHUB_OUTPUT}"
           else
@@ -85,7 +109,9 @@ jobs:
       - name: Pack
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          RELEASE_NOTES_URL: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+          RELEASE_NOTES_URL: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}
+          RELEASE_COMMIT: ${{ steps.version.outputs.commit }}
+          RELEASE_REF: refs/tags/${{ steps.version.outputs.tag }}
         run: >-
           dotnet pack src/Trendyol.Sdk/Trendyol.Sdk.csproj
           --configuration Release
@@ -96,8 +122,8 @@ jobs:
           -p:Version="${VERSION}"
           -p:PackageVersion="${VERSION}"
           -p:PackageReleaseNotes="${RELEASE_NOTES_URL}"
-          -p:RepositoryCommit="${GITHUB_SHA}"
-          -p:RepositoryBranch="${GITHUB_REF}"
+          -p:RepositoryCommit="${RELEASE_COMMIT}"
+          -p:RepositoryBranch="${RELEASE_REF}"
 
       - name: Verify package outputs
         env:
@@ -118,13 +144,14 @@ jobs:
           retention-days: 14
 
   publish-nuget:
-    name: Publish to NuGet.org
+    name: Publish packages
     needs: build
     runs-on: ubuntu-latest
     environment: release
     permissions:
       contents: read
       id-token: write
+      packages: write
     steps:
       - name: Download release artifacts
         uses: actions/download-artifact@v4
@@ -160,6 +187,29 @@ jobs:
           --source https://api.nuget.org/v3/index.json
           --skip-duplicate
 
+      - name: Configure GitHub Packages source
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          dotnet nuget add source
+          --username "${GITHUB_ACTOR}"
+          --password "${GITHUB_TOKEN}"
+          --store-password-in-clear-text
+          --name github
+          "https://nuget.pkg.github.com/${GITHUB_REPOSITORY_OWNER}/index.json"
+
+      - name: Publish package to GitHub Packages
+        shell: bash
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: >-
+          dotnet nuget push
+          "artifacts/packages/Trendyol.Sdk.${VERSION}.nupkg"
+          --source github
+          --no-symbols
+          --skip-duplicate
+
   github-release:
     name: Create GitHub Release
     needs:
@@ -180,17 +230,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           IS_PRERELEASE: ${{ needs.build.outputs.prerelease }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
         run: |
-          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            echo "::notice::GitHub Release ${GITHUB_REF_NAME} already exists; creation was skipped."
+          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "::notice::GitHub Release ${RELEASE_TAG} already exists; creation was skipped."
             exit 0
           fi
 
           options=(
-            "${GITHUB_REF_NAME}"
+            "${RELEASE_TAG}"
             "--repo" "${GITHUB_REPOSITORY}"
             "--verify-tag"
-            "--title" "${GITHUB_REF_NAME}"
+            "--title" "${RELEASE_TAG}"
             "--generate-notes"
           )
 

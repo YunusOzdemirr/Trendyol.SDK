@@ -47,3 +47,4 @@ Integration tests are opt-in and must use the Trendyol stage environment. Creden
 ## Changelog
 
 Add user-visible changes to the `Unreleased` section of [CHANGELOG.md](CHANGELOG.md). Breaking pre-1.0 changes must still be called out explicitly.
+Release 0.1.0-alpha

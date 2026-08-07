@@ -65,12 +65,29 @@ The tag push starts `.github/workflows/release.yml`, which performs these steps:
 4. Store both files as a GitHub Actions artifact.
 5. Exchange GitHub's OIDC token for a short-lived NuGet credential.
 6. Publish the package and symbols to NuGet.org.
-7. Create a GitHub Release with generated notes and both package files attached.
+7. Publish the package to GitHub Packages using the workflow's `GITHUB_TOKEN`.
+8. Create a GitHub Release with generated notes and both package files attached.
 
 The `PackageVersion` in the project file remains useful for local builds, but
 the release workflow deliberately overrides it with the pushed tag. A failed
 build or test prevents publishing. The `release` environment's protection rules
 are evaluated immediately before NuGet.org publishing.
+
+The GitHub Packages copy is linked to this repository through the package's
+`RepositoryUrl` metadata and appears in the repository's **Packages** section.
+No personal access token or additional secret is required. Symbols remain on
+NuGet.org's symbol server; GitHub Packages receives the primary `.nupkg` only.
+
+## Backfilling an existing tag
+
+When GitHub Packages publishing is added after a NuGet.org release already
+exists, do not delete or recreate the tag. After the updated workflow is merged
+into the default branch, open **Actions > Release > Run workflow**, enter the
+existing tag (for example, `v0.1.0-alpha.1`), and start the run.
+
+The workflow checks out that exact tag, rebuilds and tests it, skips the existing
+immutable NuGet.org version, publishes it to GitHub Packages, and leaves an
+existing GitHub Release unchanged.
 
 ## Failure and retry behavior
 
