@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Trendyol.Sdk/Trendyol.Sdk.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Trendyol.Sdk.IntegrationTests/Trendyol.Sdk.IntegrationTests.csproj" />
+    <Project Path="tests/Trendyol.Sdk.UnitTests/Trendyol.Sdk.UnitTests.csproj" />
+  </Folder>
+</Solution>

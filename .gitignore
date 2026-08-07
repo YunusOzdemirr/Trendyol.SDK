@@ -427,3 +427,14 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Repository build artifacts
+artifacts/
+*.nupkg
+*.snupkg
+
+# Local credentials and developer-only settings
+.env.*
+!.env.example
+appsettings.*.local.json
+secrets.json
