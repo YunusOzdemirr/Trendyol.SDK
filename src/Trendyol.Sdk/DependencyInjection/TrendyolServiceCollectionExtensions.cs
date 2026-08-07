@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Trendyol.Sdk;
+using Trendyol.Sdk.Catalog;
 using Trendyol.Sdk.Configuration;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -69,6 +70,9 @@ public static class TrendyolServiceCollectionExtensions
 
             return new TrendyolClient(httpClient, snapshot, logger, disposeHttpClient: false);
         });
+
+        services.TryAddTransient<ICatalogClient>(static serviceProvider =>
+            serviceProvider.GetRequiredService<TrendyolClient>().Catalog);
 
         return builder;
     }

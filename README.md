@@ -7,7 +7,7 @@
 
 ## Project status
 
-The project is in pre-alpha development. Its package and public API are not yet available on NuGet and may change before version 1.0.0. No Trendyol API operation is currently supported.
+The project is in pre-alpha development. Its package and public API are not yet available on NuGet and may change before version 1.0.0. Brand lookup by name is available experimentally; no other Trendyol API operation is currently supported.
 
 ## Goals
 
@@ -22,20 +22,39 @@ The project is in pre-alpha development. Its package and public API are not yet 
 
 ## Installation
 
-The package has not been published. Installation instructions will be added with the first public prerelease.
+The package has not been published to NuGet. Installation instructions will be added with the first public prerelease. Contributors can generate the current `0.1.0-alpha.1` package locally with `dotnet pack --configuration Release`.
 
 ## Quick start
 
-A runnable quick start will be added when the first API module is supported. Until then, examples would imply functionality that the package does not provide.
+```csharp
+using Trendyol.Sdk;
+using Trendyol.Sdk.Configuration;
+
+var options = new TrendyolOptions
+{
+    SellerId = 123456,
+    ApiKey = "your-api-key",
+    ApiSecret = "your-api-secret",
+};
+
+using var client = new TrendyolClient(options);
+
+var brands = await client.Catalog.SearchBrandsByNameAsync(
+    "TRENDYOLMİLLA",
+    CancellationToken.None);
+```
+
+See the [brand-search documentation](docs/catalog/brands.md) for the verified wire contract, dependency-injection usage, and error behavior. Never commit credentials to source control.
 
 ## Supported APIs
 
 | API | Status |
 |---|---|
+| Catalog — brand lookup by name | Experimental |
+| Catalog — categories and attributes | Planned |
 | Product API V2 | Planned |
 | Orders / Shipment Packages V2 | Planned |
 | Inventory & Price | Planned |
-| Catalog (brands, categories, attributes) | Planned |
 | Returns | Planned |
 | Customer Questions | Planned |
 | Invoices | Planned |
@@ -45,11 +64,11 @@ Status values used by this project are `Planned`, `In Progress`, `Supported`, `E
 
 ## Roadmap
 
-1. Establish and review the package, HTTP, authentication, error, and testing foundations.
-2. Implement brand lookup by name as the first small, representative operation.
-3. Add catalog and Product V2 operations from verified official contracts.
+1. Validate brand lookup by name and stabilize the Catalog client conventions.
+2. Add category and category-attribute operations from verified official contracts.
+3. Add Product V2 and inventory/price operations.
 4. Add Order V2 and cursor-based shipment-package synchronization.
-5. Expand into inventory, returns, questions, invoices, and webhooks.
+5. Expand into returns, questions, invoices, and webhooks.
 6. Stabilize the public API and publish a 1.0 release.
 
 The architectural baseline and documentation research are available under [`docs/architecture`](docs/architecture).

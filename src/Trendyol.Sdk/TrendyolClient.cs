@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Trendyol.Sdk.Catalog;
 using Trendyol.Sdk.Configuration;
 using Trendyol.Sdk.Internal.Http;
 
@@ -9,7 +10,7 @@ namespace Trendyol.Sdk;
 /// Provides access to implemented Trendyol Türkiye Marketplace API feature clients.
 /// </summary>
 /// <remarks>
-/// The foundation release intentionally exposes no endpoint feature properties. Dispose directly constructed clients when they are no longer needed. Clients resolved from dependency injection are disposed by the container.
+/// Dispose directly constructed clients when they are no longer needed. Clients resolved from dependency injection are disposed by the container.
 /// </remarks>
 public sealed class TrendyolClient : IDisposable
 {
@@ -28,6 +29,7 @@ public sealed class TrendyolClient : IDisposable
         _httpClient = CreateHttpClient(snapshot);
         _disposeHttpClient = true;
         _transport = new TrendyolHttpTransport(_httpClient, snapshot, NullLogger.Instance);
+        Catalog = new CatalogClient(this);
     }
 
     internal TrendyolClient(
@@ -39,7 +41,13 @@ public sealed class TrendyolClient : IDisposable
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _disposeHttpClient = disposeHttpClient;
         _transport = new TrendyolHttpTransport(httpClient, options, logger);
+        Catalog = new CatalogClient(this);
     }
+
+    /// <summary>
+    /// Gets the Trendyol catalog operations implemented by this SDK.
+    /// </summary>
+    public ICatalogClient Catalog { get; }
 
     /// <summary>
     /// Releases resources owned by this facade.

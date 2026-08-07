@@ -129,12 +129,14 @@ Sources: [Product batch-result documentation](https://developers.trendyol.com/do
 - Unknown JSON properties should be ignored for forward compatibility.
 - Response values that can evolve should remain strings or use an extensible value type. A global enum converter would make new server values deserialize as failures and is not appropriate.
 
-## First endpoint candidate after foundation review
+## First implemented endpoint
 
-The recommended first operation is brand lookup by name:
+The first implemented operation is brand lookup by name:
 
 `GET /integration/product/brands/by-name?name={brand-name}`
 
-It is explicitly shared by Product V1 and V2, exercises authentication, a GET query, JSON deserialization, errors, cancellation, and testing, and does not depend on the ambiguous paged brand-list contract.
+It is explicitly shared by Product V1 and V2, exercises authentication, a GET query, JSON deserialization, errors, cancellation, and testing, and does not depend on the ambiguous paged brand-list contract. The name filter is documented as case-sensitive.
 
-Source: [Trendyol brand documentation](https://developers.trendyol.com/docs/trendyol-marka-listesi-getbrands-1)
+The current Turkish Product V2 response example includes `id`, `name`, and `luxe`. Current official English V2 examples include `id` and `name` but omit `luxe`. The documentation does not explain whether this is a localization difference, rollout difference, or optional field. The SDK therefore exposes `luxe` as nullable and does not infer a missing value.
+
+Sources: [Turkish Product V2 brand documentation](https://developers.trendyol.com/docs/trendyol-marka-listesi-getbrands-1) and [English Product V2 brand documentation](https://developers.trendyol.com/v2.0/docs/trendyol-brand-list-getbrands-1)

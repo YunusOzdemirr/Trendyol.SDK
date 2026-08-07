@@ -29,7 +29,7 @@ The package must keep transport details internal, provide asynchronous operation
 └── Trendyol.Sdk.slnx
 ```
 
-Feature folders will be added only with real APIs. Each feature owns its public contracts and internal implementation. Likely boundaries are `Catalog`, `Products`, `Orders`, `Inventory`, `Returns`, `Questions`, `Invoices`, and `Webhooks`. A global `Models` folder and a monolithic endpoint client are deliberately avoided.
+Feature folders are added only with real APIs. Each feature owns its public contracts and internal implementation. `Catalog` is the first implemented boundary; likely later boundaries are `Products`, `Orders`, `Inventory`, `Returns`, `Questions`, `Invoices`, and `Webhooks`. A global `Models` folder and a monolithic endpoint client are deliberately avoided.
 
 Samples are deferred until the SDK has a real supported operation.
 
@@ -37,11 +37,11 @@ Samples are deferred until the SDK has a real supported operation.
 
 `TrendyolClient` is a concrete facade. There is no `ITrendyolClient`: adding a member to a public interface breaks consumers that implement it, while adding a property to a concrete facade is additive.
 
-When a feature becomes real, it exposes a focused interface such as `ICatalogClient` or `IOrdersClient`. The facade exposes implemented features as properties, and dependency-injection consumers can inject a feature interface directly. This keeps test doubles narrow and prevents the facade from becoming a giant method container.
+Each real feature exposes a focused interface such as `ICatalogClient` or `IOrdersClient`. The facade exposes implemented features as properties, and dependency-injection consumers can inject a feature interface directly. This keeps test doubles narrow and prevents the facade from becoming a giant method container. The first public feature surface is `TrendyolClient.Catalog`, backed by `ICatalogClient`.
 
 The direct constructor owns one `HttpClient` for the facade lifetime and the facade implements `IDisposable`. The DI path is backed by `IHttpClientFactory`, which owns the underlying handler lifetime. No request creates and disposes its own `HttpClient`.
 
-The foundation intentionally exposes no placeholder feature property or empty feature interface.
+No placeholder feature property or empty feature interface is exposed.
 
 ## Configuration and credentials
 
@@ -131,7 +131,7 @@ Runtime dependencies are limited to `System.Text.Json`, `Microsoft.Extensions.Ht
 
 ## Versioning and compatibility
 
-The initial package version is `0.1.0`. Semantic Versioning is used. Breaking changes before 1.0 remain explicitly documented in the changelog rather than treated as inconsequential.
+The initial prerelease package version is `0.1.0-alpha.1`. Semantic Versioning is used. Breaking changes before 1.0 remain explicitly documented in the changelog rather than treated as inconsequential.
 
 Public types are added only when they provide consumer value. Implementation types, HTTP primitives, serializer settings, and URI construction remain internal. Version-specific namespaces will be used only when Trendyol exposes incompatible generations that the SDK must support simultaneously; Product V1 is not implemented.
 
@@ -173,8 +173,8 @@ Public types are added only when they provide consumer value. Implementation typ
 
 **Reasoning:** The official API demonstrates multiple incompatible pagination and response conventions. Types will emerge from verified operations rather than anticipated uniformity.
 
-### First API candidate
+### First API module
 
-**Decision:** After foundation review, implement brand lookup by name in a catalog feature.
+**Decision:** Brand lookup by name is the first implemented operation in a catalog feature.
 
 **Reasoning:** It is a current V1/V2-shared GET and validates the complete foundational pipeline without depending on Product V1 or the ambiguous paged brand-list rules.

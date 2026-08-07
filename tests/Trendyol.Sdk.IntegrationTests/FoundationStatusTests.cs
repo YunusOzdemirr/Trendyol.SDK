@@ -2,8 +2,8 @@ namespace Trendyol.Sdk.IntegrationTests;
 
 public sealed class FoundationStatusTests
 {
-    [Fact(Skip = "No Trendyol API module is implemented; live stage tests begin with the first supported operation.")]
-    public void LiveStageTestsBeginWithFirstApiModule()
+    [Fact(Skip = "Live stage tests require explicit stage credentials and IP authorization; no network request runs by default.")]
+    public void LiveStageTestsRequireExplicitConfiguration()
     {
     }
 }
