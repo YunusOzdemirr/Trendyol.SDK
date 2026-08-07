@@ -1,0 +1,203 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CI: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_NOLOGO: true
+
+jobs:
+  build:
+    name: Build, test, and pack
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate release tag and commit
+        id: version
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+
+          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "::error::Release tags must use vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-PRERELEASE (for example, v0.1.0-alpha.1)."
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" "origin/${DEFAULT_BRANCH}"; then
+            echo "::error::The release tag must point to a commit on ${DEFAULT_BRANCH}."
+            exit 1
+          fi
+
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          if [[ "${version}" == *-* ]]; then
+            echo "prerelease=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "prerelease=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore Trendyol.Sdk.slnx
+
+      - name: Build
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: >-
+          dotnet build Trendyol.Sdk.slnx
+          --configuration Release
+          --no-restore
+          -p:ContinuousIntegrationBuild=true
+          -p:Version="${VERSION}"
+          -p:PackageVersion="${VERSION}"
+
+      - name: Test
+        run: >-
+          dotnet test Trendyol.Sdk.slnx
+          --configuration Release
+          --no-build
+          --no-restore
+
+      - name: Pack
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_NOTES_URL: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+        run: >-
+          dotnet pack src/Trendyol.Sdk/Trendyol.Sdk.csproj
+          --configuration Release
+          --no-build
+          --no-restore
+          --output artifacts/packages
+          -p:ContinuousIntegrationBuild=true
+          -p:Version="${VERSION}"
+          -p:PackageVersion="${VERSION}"
+          -p:PackageReleaseNotes="${RELEASE_NOTES_URL}"
+          -p:RepositoryCommit="${GITHUB_SHA}"
+          -p:RepositoryBranch="${GITHUB_REF}"
+
+      - name: Verify package outputs
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          test -f "artifacts/packages/Trendyol.Sdk.${VERSION}.nupkg"
+          test -f "artifacts/packages/Trendyol.Sdk.${VERSION}.snupkg"
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Trendyol.Sdk-${{ steps.version.outputs.version }}
+          path: |
+            artifacts/packages/*.nupkg
+            artifacts/packages/*.snupkg
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-nuget:
+    name: Publish to NuGet.org
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Trendyol.Sdk-${{ needs.build.outputs.version }}
+          path: artifacts/packages
+
+      - name: Validate NuGet account configuration
+        shell: bash
+        env:
+          NUGET_USER: ${{ secrets.NUGET_USER }}
+        run: |
+          if [[ -z "${NUGET_USER}" ]]; then
+            echo "::error::Create the NUGET_USER secret in the release environment. Its value must be the NuGet.org profile name, not an email address."
+            exit 1
+          fi
+
+      - name: NuGet login with trusted publishing
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish package and symbols
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: >-
+          dotnet nuget push
+          "artifacts/packages/Trendyol.Sdk.${VERSION}.nupkg"
+          --api-key "${NUGET_API_KEY}"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+  github-release:
+    name: Create GitHub Release
+    needs:
+      - build
+      - publish-nuget
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Trendyol.Sdk-${{ needs.build.outputs.version }}
+          path: artifacts/packages
+
+      - name: Create release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IS_PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "::notice::GitHub Release ${GITHUB_REF_NAME} already exists; creation was skipped."
+            exit 0
+          fi
+
+          options=(
+            "${GITHUB_REF_NAME}"
+            "--repo" "${GITHUB_REPOSITORY}"
+            "--verify-tag"
+            "--title" "${GITHUB_REF_NAME}"
+            "--generate-notes"
+          )
+
+          if [[ "${IS_PRERELEASE}" == "true" ]]; then
+            options+=("--prerelease" "--latest=false")
+          else
+            options+=("--latest")
+          fi
+
+          gh release create "${options[@]}" artifacts/packages/*
