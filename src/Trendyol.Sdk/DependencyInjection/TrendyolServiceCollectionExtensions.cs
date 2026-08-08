@@ -5,6 +5,13 @@ using Microsoft.Extensions.Options;
 using Trendyol.Sdk;
 using Trendyol.Sdk.Catalog;
 using Trendyol.Sdk.Configuration;
+using Trendyol.Sdk.Inventory;
+using Trendyol.Sdk.Invoices;
+using Trendyol.Sdk.Orders;
+using Trendyol.Sdk.Products;
+using Trendyol.Sdk.Questions;
+using Trendyol.Sdk.Returns;
+using Trendyol.Sdk.Webhooks;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -73,6 +80,20 @@ public static class TrendyolServiceCollectionExtensions
 
         services.TryAddTransient<ICatalogClient>(static serviceProvider =>
             serviceProvider.GetRequiredService<TrendyolClient>().Catalog);
+        services.TryAddTransient<IProductsClient>(static serviceProvider =>
+            serviceProvider.GetRequiredService<TrendyolClient>().Products);
+        services.TryAddTransient<IInventoryClient>(static serviceProvider =>
+            serviceProvider.GetRequiredService<TrendyolClient>().Inventory);
+        services.TryAddTransient<IOrdersClient>(static serviceProvider =>
+            serviceProvider.GetRequiredService<TrendyolClient>().Orders);
+        services.TryAddTransient<IReturnsClient>(static serviceProvider =>
+            serviceProvider.GetRequiredService<TrendyolClient>().Returns);
+        services.TryAddTransient<IQuestionsClient>(static serviceProvider =>
+            serviceProvider.GetRequiredService<TrendyolClient>().Questions);
+        services.TryAddTransient<IInvoicesClient>(static serviceProvider =>
+            serviceProvider.GetRequiredService<TrendyolClient>().Invoices);
+        services.TryAddTransient<IWebhooksClient>(static serviceProvider =>
+            serviceProvider.GetRequiredService<TrendyolClient>().Webhooks);
 
         return builder;
     }

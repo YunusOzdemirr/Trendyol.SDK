@@ -73,7 +73,7 @@ No automatic retry or rate limiter is present. Future resilience must be operati
 - validated options;
 - the factory-managed `HttpClient` configured with the official host and timeout;
 - the concrete `TrendyolClient` facade;
-- future feature interfaces as their modules are implemented.
+- focused feature interfaces for Catalog, Products, Inventory, Orders, Returns, Questions, Invoices, and Webhooks.
 
 The facade is transient when resolved through the typed-client registration. Connection pooling remains efficient because `IHttpClientFactory` manages handlers independently of facade instances.
 
@@ -131,7 +131,7 @@ Runtime dependencies are limited to `System.Text.Json`, `Microsoft.Extensions.Ht
 
 ## Versioning and compatibility
 
-The initial prerelease package version is `0.1.0-alpha.1`. Semantic Versioning is used. Breaking changes before 1.0 remain explicitly documented in the changelog rather than treated as inconsequential.
+The current prerelease package version is `0.2.0-alpha.1`. Semantic Versioning is used. Breaking changes before 1.0 remain explicitly documented in the changelog rather than treated as inconsequential.
 
 Public types are added only when they provide consumer value. Implementation types, HTTP primitives, serializer settings, and URI construction remain internal. Version-specific namespaces will be used only when Trendyol exposes incompatible generations that the SDK must support simultaneously; Product V1 is not implemented.
 

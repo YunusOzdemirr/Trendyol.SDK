@@ -32,23 +32,90 @@ internal sealed class TrendyolHttpTransport
         object? requestBody,
         CancellationToken cancellationToken)
     {
-        ValidateRelativeUri(relativeUri);
-
-        using var request = new HttpRequestMessage(method, relativeUri);
-        AddRequiredHeaders(request);
-
+        HttpContent? content = null;
         if (requestBody is not null)
         {
-            var json = JsonSerializer.SerializeToUtf8Bytes(
-                requestBody,
-                requestBody.GetType(),
-                TrendyolJson.Options);
-            request.Content = new ByteArrayContent(json);
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json")
-            {
-                CharSet = "utf-8",
-            };
+            var json = JsonSerializer.SerializeToUtf8Bytes(requestBody, requestBody.GetType(), TrendyolJson.Options);
+            content = new ByteArrayContent(json);
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/json") { CharSet = "utf-8" };
         }
+
+        return await SendCoreAsync<TResponse>(
+            operation,
+            method,
+            relativeUri,
+            routeTemplate,
+            content,
+            deserializeResponse: true,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    internal async Task SendAsync(
+        string operation,
+        HttpMethod method,
+        string relativeUri,
+        string routeTemplate,
+        object? requestBody,
+        CancellationToken cancellationToken)
+    {
+        HttpContent? content = null;
+        if (requestBody is not null)
+        {
+            var json = JsonSerializer.SerializeToUtf8Bytes(requestBody, requestBody.GetType(), TrendyolJson.Options);
+            content = new ByteArrayContent(json);
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/json") { CharSet = "utf-8" };
+        }
+
+        await SendCoreAsync<object>(
+            operation,
+            method,
+            relativeUri,
+            routeTemplate,
+            content,
+            deserializeResponse: false,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    internal Task<TResponse?> SendContentAsync<TResponse>(
+        string operation,
+        HttpMethod method,
+        string relativeUri,
+        string routeTemplate,
+        HttpContent content,
+        CancellationToken cancellationToken) =>
+        SendCoreAsync<TResponse>(operation, method, relativeUri, routeTemplate, content, true, cancellationToken);
+
+    internal async Task SendContentAsync(
+        string operation,
+        HttpMethod method,
+        string relativeUri,
+        string routeTemplate,
+        HttpContent content,
+        CancellationToken cancellationToken)
+    {
+        await SendCoreAsync<object>(
+            operation,
+            method,
+            relativeUri,
+            routeTemplate,
+            content,
+            deserializeResponse: false,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<TResponse?> SendCoreAsync<TResponse>(
+        string operation,
+        HttpMethod method,
+        string relativeUri,
+        string routeTemplate,
+        HttpContent? content,
+        bool deserializeResponse,
+        CancellationToken cancellationToken)
+    {
+        ValidateRelativeUri(relativeUri);
+
+        using var request = new HttpRequestMessage(method, relativeUri) { Content = content };
+        AddRequiredHeaders(request);
 
         TrendyolHttpLog.Sending(_logger, operation, routeTemplate);
         var stopwatch = Stopwatch.StartNew();
@@ -87,25 +154,22 @@ internal sealed class TrendyolHttpTransport
                     cancellationToken).ConfigureAwait(false);
             }
 
-            if (response.Content.Headers.ContentLength == 0)
+            if (!deserializeResponse || response.Content.Headers.ContentLength == 0)
             {
                 return default;
             }
 
 #if NET10_0_OR_GREATER
-            using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            var responseBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
 #else
-            using var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            var responseBytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
 #endif
-            if (responseStream.CanSeek && responseStream.Length == 0)
+            if (responseBytes.Length == 0)
             {
                 return default;
             }
 
-            return await JsonSerializer.DeserializeAsync<TResponse>(
-                responseStream,
-                TrendyolJson.Options,
-                cancellationToken).ConfigureAwait(false);
+            return JsonSerializer.Deserialize<TResponse>(responseBytes, TrendyolJson.Options);
         }
     }
 

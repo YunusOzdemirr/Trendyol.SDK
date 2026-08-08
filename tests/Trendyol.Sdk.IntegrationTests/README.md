@@ -1,5 +1,5 @@
 # Integration tests
 
-This project is intentionally empty until the first API module is implemented.
+This project contains read-only smoke tests against Trendyol Stage. They remain opt-in and skip safely by default.
 
-Future tests must target Trendyol's stage environment, remain opt-in, and read credentials from environment variables. They must skip safely when credentials are unavailable and must never use production credentials.
+Set `TRENDYOL_STAGE_SELLER_ID`, `TRENDYOL_STAGE_API_KEY`, and `TRENDYOL_STAGE_API_SECRET`, then run `dotnet test tests/Trendyol.Sdk.IntegrationTests`. Stage access may also require Trendyol-side IP authorization. Never use production credentials for these tests.

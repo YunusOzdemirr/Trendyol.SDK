@@ -3,7 +3,14 @@ using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Trendyol.Sdk.Catalog;
+using Trendyol.Sdk.Inventory;
+using Trendyol.Sdk.Invoices;
+using Trendyol.Sdk.Orders;
+using Trendyol.Sdk.Products;
+using Trendyol.Sdk.Questions;
+using Trendyol.Sdk.Returns;
 using Trendyol.Sdk.UnitTests.TestInfrastructure;
+using Trendyol.Sdk.Webhooks;
 
 namespace Trendyol.Sdk.UnitTests.DependencyInjection;
 
@@ -101,5 +108,27 @@ public sealed class TrendyolServiceCollectionExtensionsTests
         Assert.Throws<ArgumentNullException>(() =>
             TrendyolServiceCollectionExtensions.AddTrendyol(null!, _ => { }));
         Assert.Throws<ArgumentNullException>(() => services.AddTrendyol(null!));
+    }
+
+    [Fact]
+    public void AddTrendyolRegistersEveryFeatureInterface()
+    {
+        var services = new ServiceCollection();
+        services.AddTrendyol(options =>
+        {
+            options.SellerId = 1;
+            options.ApiKey = "key";
+            options.ApiSecret = "secret";
+        });
+        using var provider = services.BuildServiceProvider();
+
+        Assert.NotNull(provider.GetRequiredService<ICatalogClient>());
+        Assert.NotNull(provider.GetRequiredService<IProductsClient>());
+        Assert.NotNull(provider.GetRequiredService<IInventoryClient>());
+        Assert.NotNull(provider.GetRequiredService<IOrdersClient>());
+        Assert.NotNull(provider.GetRequiredService<IReturnsClient>());
+        Assert.NotNull(provider.GetRequiredService<IQuestionsClient>());
+        Assert.NotNull(provider.GetRequiredService<IInvoicesClient>());
+        Assert.NotNull(provider.GetRequiredService<IWebhooksClient>());
     }
 }

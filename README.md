@@ -7,7 +7,7 @@
 
 ## Project status
 
-The project is in pre-alpha development. Its package and public API are not yet available on NuGet and may change before version 1.0.0. Brand lookup by name is available experimentally; no other Trendyol API operation is currently supported.
+The project is in alpha development. Version `0.2.0-alpha.1` exposes the current Türkiye Marketplace API families experimentally. Public contracts may change before version 1.0.0.
 
 ## Goals
 
@@ -22,7 +22,11 @@ The project is in pre-alpha development. Its package and public API are not yet 
 
 ## Installation
 
-The package has not been published to NuGet. Installation instructions will be added with the first public prerelease. Contributors can generate the current `0.1.0-alpha.1` package locally with `dotnet pack --configuration Release`.
+Install the latest prerelease from NuGet:
+
+```shell
+dotnet add package Trendyol.Sdk --prerelease
+```
 
 ## Quick start
 
@@ -44,32 +48,30 @@ var brands = await client.Catalog.SearchBrandsByNameAsync(
     CancellationToken.None);
 ```
 
-See the [brand-search documentation](docs/catalog/brands.md) for the verified wire contract, dependency-injection usage, and error behavior. Never commit credentials to source control.
+Feature clients are available through `client.Catalog`, `client.Products`, `client.Inventory`, `client.Orders`, `client.Returns`, `client.Questions`, `client.Invoices`, and `client.Webhooks`. See the [feature guide](docs/features.md) and [API coverage matrix](docs/api-coverage.md). Never commit credentials to source control.
 
 ## Supported APIs
 
 | API | Status |
 |---|---|
-| Catalog — brand lookup by name | Experimental |
-| Catalog — categories and attributes | Planned |
-| Product API V2 | Planned |
-| Orders / Shipment Packages V2 | Planned |
-| Inventory & Price | Planned |
-| Returns | Planned |
-| Customer Questions | Planned |
-| Invoices | Planned |
-| Webhooks | Planned |
+| Catalog — brands, categories, and attributes | Experimental |
+| Product API V2 | Experimental |
+| Orders / Shipment Packages | Experimental |
+| Inventory & Price | Experimental |
+| Returns | Experimental |
+| Customer Questions | Experimental |
+| Invoices | Experimental |
+| Webhooks | Experimental |
 
 Status values used by this project are `Planned`, `In Progress`, `Supported`, `Experimental`, and `Deprecated`.
 
 ## Roadmap
 
-1. Validate brand lookup by name and stabilize the Catalog client conventions.
-2. Add category and category-attribute operations from verified official contracts.
-3. Add Product V2 and inventory/price operations.
-4. Add Order V2 and cursor-based shipment-package synchronization.
-5. Expand into returns, questions, invoices, and webhooks.
-6. Stabilize the public API and publish a 1.0 release.
+1. Validate the experimental clients against opt-in Stage scenarios.
+2. Refine response contracts from real-world payloads while preserving forward compatibility.
+3. Stabilize naming, validation, and pagination conventions.
+4. Graduate verified API families from Experimental to Supported.
+5. Stabilize the public API and publish a 1.0 release.
 
 The architectural baseline and documentation research are available under [`docs/architecture`](docs/architecture).
 
